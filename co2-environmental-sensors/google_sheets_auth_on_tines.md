@@ -24,14 +24,14 @@ There are quite a few steps the first time you do this, almost all of them over 
 14. **Share the Google Sheet(s) you want to access with your service account using the email noted above** - This is the step you are probably going to forget in the future. Try not to :-)
 
 ## Tines Setup
-The first time you do this requires several steps, but once again, for each new Story after that, it's incredibly easy.
+The first time you do this requires several steps, but for each new Story after that, it's incredibly easy.
 
 ### First Part: The JWT 
 1. Sign into your Tines Account and select Credentials -> New
 2. Under “Type” chose “JWT”
 3. Enter a credential name like `Google Sheets JWT`
 4. Under “Algorithm” chose RSA256.
-5. Define the payload for our JWTas follows:
+5. Define the payload for our JWT as follows:
 
 ```json
 { 
@@ -41,17 +41,16 @@ The first time you do this requires several steps, but once again, for each new 
 }
 ```
 
-**NOTE:** Delete the *Sub* field that is inserted by default unless you want Domain Wide Delegation and you have the permissions to do that in your Google Account.
+**NOTE:** Delete the *Sub* field that is inserted by default unless you want Domain Wide Delegation and you have the permissions to do that in your Google Account. If you have problems with auth later, it'll probably be due to that *Sub* field still being there.
 
 **NOTE 2:** The Scope above is set to give read/write access to the Google Sheets that you share with the Service Account email.  
 
-6. Select the “ Auto generate ‘iat’ (Issued At) & ‘exp’ (Expiration Time) claims” checkbox. so that Tines will add “iat” and “exp” claims to the payload according to when the credential is used.
+6. Select the “Auto generate ‘iat’ (Issued At) & ‘exp’ (Expiration Time) claims” checkbox.
 7. Copy and paste the private key from the Google private key JSON file you downloaded earlier.
 8. Click “Save Credential”
 9. You can now refer to that JWT via *{{.CREDENTIAL.google_sheets_jwt}}*
 
 ### Second Part: The Access Token
-
 Before we can call the Google APIs, we need an access token. Tines has a very neat way of doing this so that you get a new token each time the story is run (otherwise these tokens can expire quite quickly).
 
 1. Go to Credentials again
@@ -78,7 +77,6 @@ Before we can call the Google APIs, we need an access token. Tines has a very ne
 3. Every time you access that Credential in your story using `{{.CREDENTIAL.gsheets_bearer}}`, Tines will actually make the HTTP Request above and refresh the Token for you.
 
 ### Third Part: Using the Access Token
-
 1. In your Story you may be writing to Google Sheets using the following type of URL:
 
 ```sh

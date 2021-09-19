@@ -1,0 +1,184 @@
+{
+  "schema_version": 3,
+  "name": "Environmental Sensor Data to Google Sheets and Telegram",
+  "description": "Receive environmental sensor data from ESP32 device in my office and persist to Google Sheets. If the average CO2 level across all three different types of CO2 sensor is above 1000, send me an alert on Telegram.",
+  "guid": "066ad7844900ca05f493b8a928793c5c",
+  "exported_at": "2021-09-19T13:57:17Z",
+  "agents": [
+    {
+      "type": "Agents::WebhookAgent",
+      "name": "Receive Sensor Data",
+      "disabled": false,
+      "guid": "1f3b2e76cce7125fefb8c5ad4a3d8218",
+      "options": {
+        "secret": "8765676565656"
+      },
+      "keep_events_for": 0
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Persist data in Google Sheets",
+      "disabled": false,
+      "guid": "a8c14856f2671813795d6d15664f10f9",
+      "options": {
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/{{.RESOURCE.gsheets_sensor_data_sheet_id}}/values/Sheet1!A1:Z999:append?valueInputOption=USER_ENTERED",
+        "content_type": "json",
+        "method": "post",
+        "payload": {
+          "values": [
+            [
+              "{{.receive_sensor_data.body.SGP30CO2 }}",
+              "{{.receive_sensor_data.body.MHZ19CO2 }}",
+              "{{.receive_sensor_data.body.CCS811CO2 }}",
+              "{{.average_co2_across_three_sensors.AVGCO2 }}",
+              "{{.receive_sensor_data.body.SGP30TVOC }}",
+              "{{.receive_sensor_data.body.BME680Temp }}",
+              "{{.receive_sensor_data.body.BME680Pressure }}",
+              "{{.receive_sensor_data.body.BME680Humidity }}",
+              "{{.receive_sensor_data.body.BME680Gas }}",
+              "{{.receive_sensor_data.body.BME680Altitude }}",
+              "{{.receive_sensor_data.body.MHZ19Temp }}",
+              "{{.receive_sensor_data.body.CCS811TVOC }}",
+              "{% if .average_co2_across_three_sensors.AVGCO2 >= 1000.0 %}TRUE{% else %}FALSE{% endif %}",
+              "{{ \"now\" | date: \"%Y-%m-%d %H:%M\"}}"
+            ]
+          ]
+        },
+        "headers": {
+          "Authorization": "Bearer {{.CREDENTIAL.gsheets_bearer }}"
+        }
+      },
+      "schedule": null,
+      "keep_events_for": 0
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Average CO2 across three sensors",
+      "disabled": false,
+      "guid": "38a1e0d7c8ab381921bc508bda17dfe3",
+      "options": {
+        "mode": "message_only",
+        "payload": {
+          "AVGCO2": "{{.receive_sensor_data.body.SGP30CO2 | plus: .receive_sensor_data.body.MHZ19CO2 | plus: .receive_sensor_data.body.CCS811CO2 | divided_by: 3 | as_object }}"
+        }
+      },
+      "schedule": null,
+      "keep_events_for": 0
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "CO2 Higher than 1000ppm",
+      "disabled": false,
+      "guid": "9cbca4748fb214a5e9305dbf7993f5f0",
+      "options": {
+        "rules": [
+          {
+            "type": "field>=value",
+            "value": "1000",
+            "path": "{{.average_co2_across_three_sensors.AVGCO2}}"
+          }
+        ]
+      },
+      "keep_events_for": 0
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Send Alert To Telegram",
+      "disabled": false,
+      "guid": "b00905305f488a7ae7a65e7450218192",
+      "options": {
+        "url": "https://api.telegram.org/{{.CREDENTIAL.telegram_bot_key }}/sendMessage",
+        "content_type": "json",
+        "method": "post",
+        "payload": {
+          "chat_id": "{{.RESOURCE.telegram_chat_id}}",
+          "text": "\" CO2 > 1000!\"",
+          "disable_notification": true
+        }
+      },
+      "schedule": null,
+      "keep_events_for": 0
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Get Telegram Chat ID",
+      "disabled": false,
+      "guid": "4bda60f6f51cdb9d01576cd3416c397b",
+      "options": {
+        "url": "https://api.telegram.org/{{.CREDENTIAL.telegram_bot_key }}/getUpdates",
+        "content_type": "json",
+        "method": "post"
+      },
+      "schedule": null,
+      "keep_events_for": 0
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform Action",
+      "disabled": false,
+      "guid": "67b05114c2d969a8a2e0129a6d5d471b",
+      "options": {
+        "mode": "message_only",
+        "payload": {
+          "message": "The Telegram chat_id you need is:\n\n{{.get_telegram_chat_id.body.result.last.message.from.id }}"
+        }
+      },
+      "schedule": null,
+      "keep_events_for": 0
+    }
+  ],
+  "diagram_notes": [
+    {
+      "content": "Need to persist timestamp of last sent alert so I can make sure to do it no more than once per hour.",
+      "position": [
+        45.0,
+        1110.0
+      ],
+      "guid": "b3824e8893690d0a7c7736870e5f1d42"
+    },
+    {
+      "content": "To-Do: Automatically create Resource from the received chat_id",
+      "position": [
+        801.0,
+        301.0
+      ],
+      "guid": "870bd61c8f5978bed7312402d1f670e1"
+    }
+  ],
+  "links": [
+    {
+      "source": 0,
+      "receiver": 2
+    },
+    {
+      "source": 2,
+      "receiver": 1
+    },
+    {
+      "source": 2,
+      "receiver": 3
+    },
+    {
+      "source": 3,
+      "receiver": 4
+    },
+    {
+      "source": 5,
+      "receiver": 6
+    }
+  ],
+  "diagram_layout": "{\"1f3b2e76cce7125fefb8c5ad4a3d8218\":[435.0,120.0],\"a8c14856f2671813795d6d15664f10f9\":[555.0,390.0],\"38a1e0d7c8ab381921bc508bda17dfe3\":[435.0,240.0],\"9cbca4748fb214a5e9305dbf7993f5f0\":[300.0,390.0],\"b00905305f488a7ae7a65e7450218192\":[435.0,510.0],\"4bda60f6f51cdb9d01576cd3416c397b\":[825.0,120.0],\"67b05114c2d969a8a2e0129a6d5d471b\":[825.0,225.0]}",
+  "send_to_story_enabled": false,
+  "entry_agent_guid": null,
+  "exit_agent_guids": [],
+  "exit_agent_guid": null,
+  "send_to_stories": [],
+  "form": {
+    "name": "Environmental Sensor Data to Google Sheets and Telegram Form",
+    "description": "",
+    "fields": [],
+    "visibility": "tenant",
+    "agent_guid": null,
+    "success_message": "Thank you for your submission"
+  }
+}
