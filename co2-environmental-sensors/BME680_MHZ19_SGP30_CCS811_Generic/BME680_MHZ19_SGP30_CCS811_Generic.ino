@@ -51,8 +51,8 @@ TVOC: 43
 const char* ssid = "MYWIFIAP";
 const char* password = "password";
 
-//Your Domain name with URL path or IP address with path
-const char* serverName = "https://insert-you-tines-webhook-url-here.com";
+//Your Node-RED webhook URL
+const char* serverName = "https://insert-your-webhook-url-here.com";
 
 // the following variables are unsigned longs because the time, measured in
 // milliseconds, will quickly become a bigger number than can be stored in an int.
@@ -110,7 +110,7 @@ Task t2(900000, TASK_FOREVER, &t2Callback);
 
 Scheduler runner; //create an object of the Scheduler class
 
-
+// If you're running Node-RED on AWS with Route 53 you'll need this
 // Amazon Root CA doesn't expire until 2038. So should be safe enough to use :-)
 const char* root_ca= \
 "-----BEGIN CERTIFICATE-----\n" \
@@ -134,12 +134,12 @@ const char* root_ca= \
 "rqXRfboQnoZsG4q5WTP468SQvvG5\n" \
 "-----END CERTIFICATE-----\n";
 
-StaticJsonDocument<300> tinesJSON;
+StaticJsonDocument<300> webhookJSON;
 
 void setup() {
   Serial.begin(9600);
   while (!Serial);
-  Serial.println(F("Sensors for Tines"));
+  Serial.println(F("Sensors for Low-Code"));
 
   WiFi.begin(ssid, password);
   Serial.println("Connecting");
@@ -217,12 +217,12 @@ void loop() {
     Serial.println("SGP30 Data");
     Serial.print("CO2: ");
     Serial.print(mySGP30Sensor.CO2);
-    tinesJSON["SGP30CO2"] = mySGP30Sensor.CO2;
+    webhookJSON["SGP30CO2"] = mySGP30Sensor.CO2;
      
     Serial.println(" ppm");
     Serial.print("TVOC: ");
     Serial.print(mySGP30Sensor.TVOC);
-    tinesJSON["SGP30TVOC"] = mySGP30Sensor.TVOC;
+    webhookJSON["SGP30TVOC"] = mySGP30Sensor.TVOC;
     
     Serial.println(" ppb");
 
@@ -232,27 +232,27 @@ void loop() {
     Serial.print("Temperature: ");
     Serial.print(bme.temperature);
     Serial.println(" *C");
-    tinesJSON["BME680Temp"] = bme.temperature;
+    webhookJSON["BME680Temp"] = bme.temperature;
   
     Serial.print("Pressure: ");
     Serial.print(bme.pressure / 100.0);
     Serial.println(" hPa");
-    tinesJSON["BME680Pressure"] = bme.pressure / 100.0;
+    webhookJSON["BME680Pressure"] = bme.pressure / 100.0;
   
     Serial.print("Humidity: ");
     Serial.print(bme.humidity);
     Serial.println(" %");
-    tinesJSON["BME680Humidity"] = bme.humidity;
+    webhookJSON["BME680Humidity"] = bme.humidity;
   
     Serial.print("Gas: ");
     Serial.print(bme.gas_resistance / 1000.0);
     Serial.println(" KOhms");
-    tinesJSON["BME680Gas"] = bme.gas_resistance / 1000.0;
+    webhookJSON["BME680Gas"] = bme.gas_resistance / 1000.0;
   
     Serial.print("Approx. Altitude: ");
     Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
     Serial.println(" m");
-    tinesJSON["BME680Altitude"] = bme.readAltitude(SEALEVELPRESSURE_HPA);
+    webhookJSON["BME680Altitude"] = bme.readAltitude(SEALEVELPRESSURE_HPA);
 
     Serial.println();
   
@@ -260,12 +260,12 @@ void loop() {
     Serial.print("CO2: ");                      
     Serial.print(MHZ19_CO2);                                
     Serial.println(" ppm");                                
-    tinesJSON["MHZ19CO2"] = MHZ19_CO2;
+    webhookJSON["MHZ19CO2"] = MHZ19_CO2;
   
     Serial.print("Temperature: ");                  
     Serial.print(MHZ19_Temp);                               
     Serial.println(" *C");                                 
-    tinesJSON["MHZ19Temp"] = MHZ19_Temp;
+    webhookJSON["MHZ19Temp"] = MHZ19_Temp;
     
     Serial.println();
   
@@ -273,17 +273,17 @@ void loop() {
     Serial.print("CO2: ");
     Serial.print(CCS_eCO2);
     Serial.println(" ppm");
-    tinesJSON["CCS811CO2"] = CCS_eCO2;
+    webhookJSON["CCS811CO2"] = CCS_eCO2;
     
     Serial.print("TVOC: ");
     Serial.println(CCS_TVOC);
-    tinesJSON["CCS811TVOC"] = CCS_TVOC;
+    webhookJSON["CCS811TVOC"] = CCS_TVOC;
     
     Serial.println();
     Serial.println();
 
     // Post on the Webhook
-    postToTines();
+    postToWebhook();
     
     
     t1Results = false;
@@ -308,7 +308,7 @@ void t2Callback(void) {
   t2Results = true;
 }
 
-void postToTines(void){
+void postToWebhook(void){
 
   //Check WiFi connection status
   if(WiFi.status()== WL_CONNECTED){
@@ -319,7 +319,7 @@ void postToTines(void){
 
    // Serialize the JSON
    String json;
-   serializeJson(tinesJSON, json);
+   serializeJson(webhookJSON, json);
   
     // If you need an HTTP request with a content type: application/json, use the following:
     http.addHeader("Content-Type", "application/json");
