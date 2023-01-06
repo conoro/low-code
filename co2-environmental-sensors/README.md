@@ -1,5 +1,5 @@
 # CO2 and other Environmental Sensor data to Google Sheets and Telegram
-This Story shows how to use Low-Code with IOT sensors and both Google Sheets and Telegram. 
+This Story shows how to use Low-Code with IOT sensors and Telegram. 
 
 The full write-up is over on my Tech blog at [conoroneill.net](https://conoroneill.net/2021/09/19/using-low-code-for-home-iot-automation/)
 
